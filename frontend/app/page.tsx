@@ -1,42 +1,47 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import NDAForm from "@/components/NDAForm";
 import NDAPreview from "@/components/NDAPreview";
 import { NDAFormData, defaultFormData } from "@/types/nda";
 
 export default function Home() {
   const [formData, setFormData] = useState<NDAFormData>(defaultFormData);
-  const [downloading, setDownloading] = useState(false);
 
-  const handleDownloadPdf = useCallback(async () => {
-    setDownloading(true);
-    try {
-      const html2pdf = (await import("html2pdf.js")).default;
-      const element = document.getElementById("nda-preview");
-      if (!element) return;
+  const handleDownload = async () => {
+    const element = document.getElementById("nda-preview");
+    if (!element) return;
 
-      const filename =
-        formData.party1.company && formData.party2.company
-          ? `Mutual-NDA-${formData.party1.company}-${formData.party2.company}.pdf`
-              .replace(/\s+/g, "-")
-              .replace(/[^a-zA-Z0-9._-]/g, "")
-          : "Mutual-NDA.pdf";
+    const { toJpeg } = await import("html-to-image");
+    const { jsPDF } = await import("jspdf");
 
-      await html2pdf()
-        .set({
-          margin: [15, 15, 15, 15],
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        })
-        .from(element)
-        .save();
-    } finally {
-      setDownloading(false);
+    const dataUrl = await toJpeg(element, { pixelRatio: 1.5, quality: 0.88, backgroundColor: "#ffffff" });
+
+    const img = new Image();
+    img.src = dataUrl;
+    await new Promise((resolve) => { img.onload = resolve; });
+
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgHeight = (img.naturalHeight * pageWidth) / img.naturalWidth;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(dataUrl, "JPEG", 0, position, pageWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position -= pageHeight;
+      pdf.addPage();
+      pdf.addImage(dataUrl, "JPEG", 0, position, pageWidth, imgHeight);
+      heightLeft -= pageHeight;
     }
-  }, [formData]);
+
+    const date = new Date().toISOString().split("T")[0];
+    pdf.save(`mutual-nda-${date}.pdf`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -58,27 +63,17 @@ export default function Home() {
             </p>
           </div>
           <button
-            onClick={handleDownloadPdf}
-            disabled={downloading}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            onClick={handleDownload}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            {downloading ? (
-              <>
-                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Generating PDF…
-              </>
-            ) : (
-              <>
-                <DownloadIcon />
-                Download PDF
-              </>
-            )}
+            <DownloadIcon />
+            Download PDF
           </button>
         </div>
       </header>
 
       {/* Main two-column layout */}
-      <main className="max-w-screen-xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <main className="max-w-screen-xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         {/* Form panel */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-base font-semibold text-gray-800 mb-5">Enter NDA Details</h2>
@@ -86,12 +81,12 @@ export default function Home() {
         </div>
 
         {/* Preview panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col">
+          <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
             <h2 className="text-base font-semibold text-gray-800">Live Preview</h2>
             <span className="text-xs text-gray-400">Updates as you type</span>
           </div>
-          <div className="p-2 overflow-auto max-h-[calc(100vh-10rem)]">
+          <div className="p-2 overflow-auto flex-1">
             <NDAPreview data={formData} />
           </div>
         </div>
