@@ -1,0 +1,10 @@
+.git/
+.claude/
+.env
+backend/.venv/
+backend/prelegal.db
+backend/uv.lock
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+scripts/

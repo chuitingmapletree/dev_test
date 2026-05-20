@@ -1,0 +1,12 @@
+# Environment
+.env
+
+# Python
+backend/.venv/
+backend/prelegal.db
+__pycache__/
+*.pyc
+*.pyo
+
+# Next.js (handled by frontend/.gitignore but also here for safety)
+frontend/out/
