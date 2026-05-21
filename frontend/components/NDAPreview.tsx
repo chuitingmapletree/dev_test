@@ -4,6 +4,7 @@ import { NDAFormData } from "@/types/nda";
 
 interface Props {
   data: NDAFormData;
+  standardTerms?: string;
 }
 
 function formatDate(isoDate: string): string {
@@ -62,7 +63,33 @@ function SignatureTable({ data }: { data: NDAFormData }) {
   );
 }
 
-export default function NDAPreview({ data }: Props) {
+function renderStandardTerms(markdown: string) {
+  const toHtml = (text: string) =>
+    text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+  return markdown
+    .split(/\n\n+/)
+    .map((block, i) => {
+      const trimmed = block.trim();
+      if (!trimmed) return null;
+      if (trimmed.startsWith("# ")) {
+        return (
+          <h2 key={i} className="text-lg font-bold mt-6 mb-3">
+            {trimmed.slice(2)}
+          </h2>
+        );
+      }
+      return (
+        <p
+          key={i}
+          className="mb-3 text-sm leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: toHtml(trimmed) }}
+        />
+      );
+    });
+}
+
+export default function NDAPreview({ data, standardTerms }: Props) {
   const mndaTerm =
     data.mndaTermType === "expires"
       ? `Expires ${data.mndaTermYears} year(s) from Effective Date.`
@@ -155,7 +182,7 @@ export default function NDAPreview({ data }: Props) {
       </section>
 
       {/* Signature block */}
-      <section className="mb-6">
+      <section id="signature-section" className="mb-6">
         <p className="mb-3 text-sm">
           By signing this Cover Page, each party agrees to enter into this MNDA as of the
           Effective Date.
@@ -163,19 +190,12 @@ export default function NDAPreview({ data }: Props) {
         <SignatureTable data={data} />
       </section>
 
-      {/* Footer */}
-      <p className="text-xs text-gray-400 text-center border-t pt-4">
-        Common Paper Mutual Non-Disclosure Agreement (Version 1.0) free to use under{" "}
-        <a
-          href="https://creativecommons.org/licenses/by/4.0/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline"
-        >
-          CC BY 4.0
-        </a>
-        .
-      </p>
+      {/* Standard Terms */}
+      {standardTerms && (
+        <section className="border-t pt-6 mt-2">
+          {renderStandardTerms(standardTerms)}
+        </section>
+      )}
     </div>
   );
 }

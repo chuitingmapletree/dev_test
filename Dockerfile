@@ -18,8 +18,9 @@ COPY backend/ ./backend/
 WORKDIR /app/backend
 RUN uv pip install --system .
 
-# Copy built frontend
+# Copy built frontend and templates
 COPY --from=frontend-builder /app/frontend/out /app/frontend/out
+COPY templates/ /app/templates/
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
